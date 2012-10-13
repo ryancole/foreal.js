@@ -8,7 +8,13 @@ function Client (socket) {
     this.socket = socket;
     
     // client settings
-    this.settings = { };
+    this.settings = {
+        
+        nickname: 'default',
+        hostname: socket.remoteAddress,
+        registered: false
+        
+    };
     
     // incoming message buffer
     this.buffer = '';
@@ -20,6 +26,18 @@ function Client (socket) {
 
 // client inherits from event emitter
 util.inherits(Client, events.EventEmitter);
+
+Client.prototype.send = function () {
+    
+    // format the outbound message
+    var outboundMessage = util.format.apply(this, arguments) + '\r\n';
+    
+    console.log('out: %s', outboundMessage);
+    
+    // send it to the client
+    this.socket.write(outboundMessage);
+    
+};
 
 Client.prototype.onData = function (buffer) {
     

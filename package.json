@@ -1,16 +1,14 @@
 {
-  "author": "Ryan Cole <ryan@rycole.com> (https://github.com/ryancole)",
-  "name": "foreal.js",
-  "description": "This IRC daemon is for real.",
-  "version": "0.0.1",
-  "homepage": "https://github.com/ryancole/foreal.js",
-  "repository": {
-    "url": "git@github.com:ryancole/foreal.js.git"
-  },
-  "dependencies": {},
-  "devDependencies": {},
-  "optionalDependencies": {},
-  "engines": {
-    "node": "*"
-  }
+    "author": "Ryan Cole <ryan@rycole.com> (https://github.com/ryancole)",
+    "name": "foreal.js",
+    "description": "This IRC daemon is for real.",
+    "version": "0.0.1",
+    "homepage": "https://github.com/ryancole/foreal.js",
+    "repository": {
+        "url": "git@github.com:ryancole/foreal.js.git"
+    },
+    "dependencies": {},
+    "engines": {
+        "node": "*"
+    }
 }

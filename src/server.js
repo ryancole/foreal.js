@@ -70,11 +70,8 @@ Server.prototype.onClientData = function (client, data) {
     // tack on message params
     parsedMessage.params = parts.join(' ');
     
-    // generate a response to the message
-    var response = this.protocol.handleMessage(parsedMessage);
-    
-    if (response)
-        console.log(response);
+    // handle the received message
+    this.protocol.handleMessage(parsedMessage);
     
 };
 
