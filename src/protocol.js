@@ -1,7 +1,7 @@
 
-function Protocol () {
+function Protocol (server) {
     
-    /* idk, yet */
+    this.server = server;
     
 };
 
@@ -12,10 +12,32 @@ Protocol.prototype.handleMessage = function (message) {
     
     // return result of handler method, if any
     if (handlerMethod)
-        return handlerMethod(message);
+        return handlerMethod.apply(this, [message]);
     
     // return unknown message handler
     return this.onUnknownMessage(message);
+    
+};
+
+Protocol.prototype.onJOIN = function (message) {
+    
+    var client = message.client,
+        params = message.params.split(' ');
+    
+    if (params.length < 1)
+        return 'ERR_NEEDMOREPARAMS';
+    
+    var requestedChannels = params.shift().split(','),
+        requestedChannelKeys = params.shift();
+    
+    if (requestedChannelKeys)
+        requestedChannelKeys = requestedChannelKeys.split(',');
+    
+    requestedChannels.forEach(function (requestedChannel, index) {
+        
+        
+        
+    });
     
 };
 
@@ -63,15 +85,44 @@ Protocol.prototype.onUSER = function (message) {
     client.settings.registered = true;
     
     // send welcoming messages
-    client.send('375 %s :- Message of the Day -', client.settings.nickname);
+    client.send('375 %s :- %s Message of the Day - ', client.settings.nickname, this.server.settings.hostname);
     client.send('372 %s :- No message set', client.settings.nickname);
-    client.send('376 %s :End of /MOTD command.', client.settings.nickname);
+    client.send('376 %s :End of /MOTD command', client.settings.nickname);
+    
+};
+
+Protocol.prototype.onMODE = function (message) {
+    
+    var client = message.client,
+        params = message.params.split(' ');
+    
+    if (params.length < 2)
+        return 'ERR_NEEDMOREPARAMS';
+    
+    var target = params.shift(),
+        modes = params.shift(),
+        forChannel = (target[0] == '#' || target[0] == '&');
+    
+    if (forChannel == true) {
+        
+        
+        
+    } else if (forChannel == false && params.length == 0) {
+        
+        if (target != client.settings.nickname)
+            return 'ERR_USERSDONTMATCH';
+        
+    }
     
 };
 
 Protocol.prototype.onUnknownMessage = function (message) {
     
-    console.log('error: unknown message: %s %s', message.command, message.params);
+    var client = message.client,
+        command = message.command;
+    
+    // notify the client of the unknown command
+    client.send('421 %s %s :Unknown command', client.settings.nickname, command);
     
 };
 

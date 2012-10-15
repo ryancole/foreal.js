@@ -10,11 +10,17 @@ var Client = require('./client'),
 
 function Server () {
     
+    this.settings = {
+        
+        hostname: 'ryan-server'
+        
+    };
+    
     // init net.server instance
     this.server = new net.Server;
     
     // init message parser
-    this.protocol = new Protocol;
+    this.protocol = new Protocol(this);
     
     // set event handlers
     this.server.on('error', this.onError.bind(this));

@@ -32,8 +32,6 @@ Client.prototype.send = function () {
     // format the outbound message
     var outboundMessage = util.format.apply(this, arguments) + '\r\n';
     
-    console.log('out: %s', outboundMessage);
-    
     // send it to the client
     this.socket.write(outboundMessage);
     
