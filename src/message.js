@@ -1,11 +1,11 @@
 
-function Protocol (server) {
+function MessageHandler (server) {
     
     this.server = server;
     
 };
 
-Protocol.prototype.handleMessage = function (message) {
+MessageHandler.prototype.handleMessage = function (message) {
     
     // reference the handler method
     var handlerMethod = this['on' + message.command];
@@ -14,21 +14,20 @@ Protocol.prototype.handleMessage = function (message) {
     if (handlerMethod)
         return handlerMethod.apply(this, [message]);
     
-    // return unknown message handler
-    return this.onUnknownMessage(message);
+    // return unknown message
+    return 'ERR_UNKNOWNCOMMAND';
     
 };
 
-Protocol.prototype.onJOIN = function (message) {
+MessageHandler.prototype.onJOIN = function (message) {
     
-    var client = message.client,
-        params = message.params.split(' ');
+    var client = message.client;
     
-    if (params.length < 1)
+    if (message.params.length < 1)
         return 'ERR_NEEDMOREPARAMS';
     
-    var requestedChannels = params.shift().split(','),
-        requestedChannelKeys = params.shift();
+    var requestedChannels = message.params.shift().split(','),
+        requestedChannelKeys = message.params.shift();
     
     if (requestedChannelKeys)
         requestedChannelKeys = requestedChannelKeys.split(',');
@@ -41,10 +40,10 @@ Protocol.prototype.onJOIN = function (message) {
     
 };
 
-Protocol.prototype.onNICK = function (message) {
+MessageHandler.prototype.onNICK = function (message) {
     
     var client = message.client,
-        requestedNickname = message.params.trim();
+        requestedNickname = message.params.shift();
     
     // make sure the requested nick is valid
     if (requestedNickname.length == 0) {
@@ -66,22 +65,21 @@ Protocol.prototype.onNICK = function (message) {
     
 };
 
-Protocol.prototype.onUSER = function (message) {
+MessageHandler.prototype.onUSER = function (message) {
     
-    var client = message.client,
-        params = message.params.split(' ');
+    var client = message.client;
     
-    if (params.length < 4)
+    if (message.params.length < 4)
         return 'ERR_NEEDMOREPARAMS';
     
     if (client.settings.registered == true)
         return 'ERR_ALREADYREGISTRED';
     
     // setting user registration variables
-    client.settings.username = params.shift();
-    client.settings.hostname = params.shift();
-    client.settings.servername = params.shift();
-    client.settings.realname = params.join(' ');
+    client.settings.username = message.params.shift();
+    client.settings.hostname = message.params.shift();
+    client.settings.servername = message.params.shift();
+    client.settings.realname = message.params.join(' ');
     client.settings.registered = true;
     
     // send welcoming messages
@@ -91,40 +89,42 @@ Protocol.prototype.onUSER = function (message) {
     
 };
 
-Protocol.prototype.onMODE = function (message) {
+MessageHandler.prototype.onMODE = function (message) {
     
-    var client = message.client,
-        params = message.params.split(' ');
+    var client = message.client;
     
-    if (params.length < 2)
+    if (message.params.length < 1)
         return 'ERR_NEEDMOREPARAMS';
     
-    var target = params.shift(),
-        modes = params.shift(),
-        forChannel = (target[0] == '#' || target[0] == '&');
+    var target = message.params.shift(),
+        modes = message.params.shift();
     
-    if (forChannel == true) {
+    // differentiate between user and channel modes
+    if (target[0] == '#' || target[0] == '&') {
         
+        return 'ERR_UNKNOWNCOMMAND';
         
+    } else {
         
-    } else if (forChannel == false && params.length == 0) {
-        
+        // make sure the users match
         if (target != client.settings.nickname)
             return 'ERR_USERSDONTMATCH';
+        
+        if (modes) {
+            
+            // modify user modes
+            client.send('MODE %s %s', client.settings.nickname, modes);
+            
+        } else {
+            
+            // existing modes look-up
+            client.send('221 %s %s', client.settings.nickname, client.settings.modes);
+            
+        }
         
     }
     
 };
 
-Protocol.prototype.onUnknownMessage = function (message) {
-    
-    var client = message.client,
-        command = message.command;
-    
-    // notify the client of the unknown command
-    client.send('421 %s %s :Unknown command', client.settings.nickname, command);
-    
-};
-
-// export protocol class
-module.exports = Protocol;
+// export message handler class
+module.exports = MessageHandler;

@@ -12,7 +12,8 @@ function Client (socket) {
         
         nickname: 'default',
         hostname: socket.remoteAddress,
-        registered: false
+        registered: false,
+        modes: new Array
         
     };
     

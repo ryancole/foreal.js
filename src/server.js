@@ -5,7 +5,8 @@ var net = require('net'),
 
 // lib libs
 var Client = require('./client'),
-    Protocol = require('./protocol');
+    ErrorHandler = require('./error'),
+    MessageHandler = require('./message');
 
 
 function Server () {
@@ -19,8 +20,9 @@ function Server () {
     // init net.server instance
     this.server = new net.Server;
     
-    // init message parser
-    this.protocol = new Protocol(this);
+    // init irc message handler
+    this.messageHandler = new MessageHandler(this);
+    this.errorHandler = new ErrorHandler(this);
     
     // set event handlers
     this.server.on('error', this.onError.bind(this));
@@ -59,7 +61,7 @@ Server.prototype.onClientData = function (client, data) {
     };
     
     // split on the obvious delimiter
-    var parts = data.split(' ');
+    var parts = data.trim().split(' ');
     
     // handle messages with and without prefix
     if (parts[0][0] == ':') {
@@ -74,10 +76,15 @@ Server.prototype.onClientData = function (client, data) {
     }
     
     // tack on message params
-    parsedMessage.params = parts.join(' ');
+    parsedMessage.params = parts;
     
     // handle the received message
-    this.protocol.handleMessage(parsedMessage);
+    var error = this.messageHandler.handleMessage(parsedMessage),
+        handlerMethod = this.errorHandler[error];
+    
+    // handle any errors
+    if (error && handlerMethod)
+        handlerMethod(parsedMessage);
     
 };
 
