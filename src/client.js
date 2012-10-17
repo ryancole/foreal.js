@@ -13,15 +13,31 @@ function Client (socket) {
         nickname: 'default',
         hostname: socket.remoteAddress,
         registered: false,
-        modes: new Array
+        lastping: Date.now(),
+        channels: [],
+        modes: [],
         
     };
+    
+    this.randomnum = Math.floor(Math.random()*11);
     
     // incoming message buffer
     this.buffer = '';
     
     // set event handlers
     this.socket.on('data', this.onData.bind(this));
+    
+    // set ping pong timer
+    this.pingpongTimer = setInterval(function () {
+        
+        // kill the connection if its timed out
+        if ((Date.now() - this.settings.lastping) / 1000 > 5)
+            return this.quit();
+        
+        // ask for a pong
+        return this.send('PING %s', this.settings.nickname);
+        
+    }.bind(this), 10000);
     
 };
 
@@ -34,7 +50,21 @@ Client.prototype.send = function () {
     var outboundMessage = util.format.apply(this, arguments) + '\r\n';
     
     // send it to the client
-    this.socket.write(outboundMessage);
+    return this.socket.write(outboundMessage);
+    
+};
+
+Client.prototype.quit = function () {
+    
+    // force close the socket
+    this.socket.destroy();
+    
+    // notify others of the departure
+    this.settings.channels.forEach(function (channel) {
+        
+        console.log(channel);
+        
+    });
     
 };
 
@@ -51,6 +81,9 @@ Client.prototype.onData = function (buffer) {
         this.emit('data', this, line.trim());
         
     }.bind(this));
+    
+    // update last ping pong time
+    this.settings.lastping = Date.now();
     
 };
 

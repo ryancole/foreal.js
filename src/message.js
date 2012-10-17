@@ -126,5 +126,11 @@ MessageHandler.prototype.onMODE = function (message) {
     
 };
 
+MessageHandler.prototype.onPONG = function (message) {
+    
+    // message.client.settings.lastping = Date.now();
+    
+};
+
 // export message handler class
 module.exports = MessageHandler;
