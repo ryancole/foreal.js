@@ -24,8 +24,10 @@ function Server () {
     this.messageHandler = new MessageHandler(this);
     this.errorHandler = new ErrorHandler(this);
     
+    // collection of connected clients
+    this.clients = [];
+    
     // set event handlers
-    this.server.on('error', this.onError.bind(this));
     this.server.on('connection', this.onConnection.bind(this));
     
 };
@@ -44,11 +46,8 @@ Server.prototype.onConnection = function (socket) {
     // set event handlers
     client.on('data', this.onClientData.bind(this));
     
-};
-
-Server.prototype.onError = function (error) {
-    
-    console.log(error);
+    // add client to collection
+    this.clients.push(client);
     
 };
 

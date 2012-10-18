@@ -26,13 +26,14 @@ function Client (socket) {
     
     // set event handlers
     this.socket.on('data', this.onData.bind(this));
+    this.socket.on('close', this.onClose.bind(this));
     
     // set ping pong timer
     this.pingpongTimer = setInterval(function () {
         
         // kill the connection if its timed out
-        if ((Date.now() - this.settings.lastping) / 1000 > 5)
-            return this.quit();
+        if ((Date.now() - this.settings.lastping) / 1000 > 60)
+            return this.socket.end();
         
         // ask for a pong
         return this.send('PING %s', this.settings.nickname);
@@ -55,9 +56,6 @@ Client.prototype.send = function () {
 };
 
 Client.prototype.quit = function () {
-    
-    // force close the socket
-    this.socket.destroy();
     
     // notify others of the departure
     this.settings.channels.forEach(function (channel) {
@@ -84,6 +82,25 @@ Client.prototype.onData = function (buffer) {
     
     // update last ping pong time
     this.settings.lastping = Date.now();
+    
+};
+
+Client.prototype.onClose = function (had_error) {
+    
+    // remove all event listeners
+    this.removeAllListeners();
+    this.socket.removeAllListeners();
+    
+    // clear ping pong timer
+    clearInterval(this.pingpongTimer);
+    
+    // dispatch quit messages
+    this.quit();
+    
+    // todo: remove from channels
+    
+    // remove from user list
+    
     
 };
 
