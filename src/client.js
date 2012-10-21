@@ -26,7 +26,6 @@ function Client (socket) {
     
     // set event handlers
     this.socket.on('data', this.onData.bind(this));
-    this.socket.on('close', this.onClose.bind(this));
     
     // set ping pong timer
     this.pingpongTimer = setInterval(function () {
@@ -87,8 +86,7 @@ Client.prototype.onData = function (buffer) {
 
 Client.prototype.onClose = function (had_error) {
     
-    // remove all event listeners
-    this.removeAllListeners();
+    // remove client socket event listeners
     this.socket.removeAllListeners();
     
     // clear ping pong timer

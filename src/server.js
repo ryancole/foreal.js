@@ -20,15 +20,15 @@ function Server () {
     // init net.server instance
     this.server = new net.Server;
     
+    // set event handlers
+    this.server.on('connection', this.onConnection.bind(this));
+    
     // init irc message handler
     this.messageHandler = new MessageHandler(this);
     this.errorHandler = new ErrorHandler(this);
     
     // collection of connected clients
     this.clients = [];
-    
-    // set event handlers
-    this.server.on('connection', this.onConnection.bind(this));
     
 };
 
@@ -45,6 +45,7 @@ Server.prototype.onConnection = function (socket) {
     
     // set event handlers
     client.on('data', this.onClientData.bind(this));
+    client.on('close', this.onClientClose.bind(this));
     
     // add client to collection
     this.clients.push(client);
@@ -84,6 +85,12 @@ Server.prototype.onClientData = function (client, data) {
     // handle any errors
     if (error && handlerMethod)
         handlerMethod(parsedMessage);
+    
+};
+
+Server.prototype.onClientClose = function(client) {
+    
+    
     
 };
 
