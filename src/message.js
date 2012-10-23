@@ -1,7 +1,40 @@
 
-function MessageHandler (server) {
+var ErrorHandler = require('./error');
+
+
+function MessageHandler () {
     
-    this.server = server;
+    /* idk yet */
+    
+};
+
+MessageHandler.prototype.parseMessage = function (data) {
+    
+    var parsedMessage = {
+        
+        client: this
+        
+    };
+    
+    // split on the obvious delimiter
+    var parts = data.trim().split(' ');
+    
+    // handle messages with and without prefix
+    if (parts[0][0] == ':') {
+        
+        parsedMessage.prefix = parts.shift();
+        parsedMessage.command = parts.shift().toUpperCase();
+        
+    } else {
+        
+        parsedMessage.command = parts.shift().toUpperCase();
+        
+    }
+    
+    // tack on message params
+    parsedMessage.params = parts;
+    
+    return parsedMessage;
     
 };
 
@@ -12,10 +45,10 @@ MessageHandler.prototype.handleMessage = function (message) {
     
     // return result of handler method, if any
     if (handlerMethod)
-        return handlerMethod.apply(this, [message]);
+        return handlerMethod.call(this, message);
     
     // return unknown message
-    return 'ERR_UNKNOWNCOMMAND';
+    return ErrorHandler.createError('ERR_UNKNOWNCOMMAND', message);
     
 };
 
@@ -24,7 +57,7 @@ MessageHandler.prototype.onJOIN = function (message) {
     var client = message.client;
     
     if (message.params.length < 1)
-        return 'ERR_NEEDMOREPARAMS';
+        return ErrorHandler.createError('ERR_NEEDMOREPARAMS', message);
     
     var requestedChannels = message.params.shift().split(','),
         requestedChannelKeys = message.params.shift();
@@ -43,25 +76,32 @@ MessageHandler.prototype.onJOIN = function (message) {
 MessageHandler.prototype.onNICK = function (message) {
     
     var client = message.client,
-        requestedNickname = message.params.shift();
+        requestedNickname = message.params.shift().trim();
+    
+    // lob off leading semi colon
+    if (requestedNickname[0] == ':')
+        requestedNickname = requestedNickname.slice(1).trim();
     
     // make sure the requested nick is valid
     if (requestedNickname.length == 0) {
         
-        return 'ERR_NONICKNAMEGIVEN';
+        return ErrorHandler.createError('ERR_NONICKNAMEGIVEN', message);
         
-    } else if (requestedNickname == client.nickname) {
+    } else if (requestedNickname == client.attributes.nickname || client.server.getClient(requestedNickname)) {
         
-        return 'ERR_NICKNAMEINUSE';
+        return ErrorHandler.createError('ERR_NICKNAMEINUSE', message, { nickname: requestedNickname });
         
     } else if (requestedNickname.length > 9) {
         
-        return 'ERR_ERRONEUSNICKNAME';
+        return ErrorHandler.createError('ERR_ERRONEUSNICKNAME', message, { nickname: requestedNickname });
         
     }
     
-    // set the client nick
-    client.settings.nickname = requestedNickname;
+    // notify the user of the nickname change
+    client.send(':%s NICK :%s', client.mask, requestedNickname);
+    
+    // set the client nickname
+    client.attributes.nickname = requestedNickname;
     
 };
 
@@ -70,22 +110,22 @@ MessageHandler.prototype.onUSER = function (message) {
     var client = message.client;
     
     if (message.params.length < 4)
-        return 'ERR_NEEDMOREPARAMS';
+        return ErrorHandler.createError('ERR_NEEDMOREPARAMS', message);
     
-    if (client.settings.registered == true)
-        return 'ERR_ALREADYREGISTRED';
+    if (client.attributes.registered == true)
+        return ErrorHandler.createError('ERR_ALREADYREGISTRED', message);
     
     // setting user registration variables
-    client.settings.username = message.params.shift();
-    client.settings.hostname = message.params.shift();
-    client.settings.servername = message.params.shift();
-    client.settings.realname = message.params.join(' ');
-    client.settings.registered = true;
+    client.attributes.username = message.params.shift();
+    client.attributes.hostname = message.params.shift();
+    client.attributes.servername = message.params.shift();
+    client.attributes.realname = message.params.join(' ');
+    client.attributes.registered = true;
     
     // send welcoming messages
-    client.send('375 %s :- %s Message of the Day - ', client.settings.nickname, this.server.settings.hostname);
-    client.send('372 %s :- No message set', client.settings.nickname);
-    client.send('376 %s :End of /MOTD command', client.settings.nickname);
+    client.send('375 %s :- %s Message of the Day - ', client.attributes.nickname, client.server.settings.hostname);
+    client.send('372 %s :- No message set', client.attributes.nickname);
+    client.send('376 %s :End of /MOTD command', client.attributes.nickname);
     
 };
 
@@ -94,7 +134,7 @@ MessageHandler.prototype.onMODE = function (message) {
     var client = message.client;
     
     if (message.params.length < 1)
-        return 'ERR_NEEDMOREPARAMS';
+        return ErrorHandler.createError('ERR_NEEDMOREPARAMS', message);
     
     var target = message.params.shift(),
         modes = message.params.shift();
@@ -102,23 +142,23 @@ MessageHandler.prototype.onMODE = function (message) {
     // differentiate between user and channel modes
     if (target[0] == '#' || target[0] == '&') {
         
-        return 'ERR_UNKNOWNCOMMAND';
+        return ErrorHandler.createError('ERR_UNKNOWNCOMMAND', message);
         
     } else {
         
         // make sure the users match
-        if (target != client.settings.nickname)
-            return 'ERR_USERSDONTMATCH';
+        if (target != client.attributes.nickname)
+            return ErrorHandler.createError('ERR_USERSDONTMATCH', message);
         
         if (modes) {
             
             // modify user modes
-            client.send('MODE %s %s', client.settings.nickname, modes);
+            client.send('MODE %s %s', client.attributes.nickname, modes);
             
         } else {
             
             // existing modes look-up
-            client.send('221 %s %s', client.settings.nickname, client.settings.modes);
+            client.send('221 %s %s', client.attributes.nickname, client.attributes.modes);
             
         }
         
@@ -126,11 +166,5 @@ MessageHandler.prototype.onMODE = function (message) {
     
 };
 
-MessageHandler.prototype.onPONG = function (message) {
-    
-    // message.client.settings.lastping = Date.now();
-    
-};
-
-// export message handler class
-module.exports = MessageHandler;
+// export message handler instance
+module.exports = new MessageHandler;

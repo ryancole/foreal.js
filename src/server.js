@@ -1,96 +1,58 @@
 
 //  std libs
-var net = require('net'),
-    events = require('events');
+var net = require('net');
 
 // lib libs
-var Client = require('./client'),
-    ErrorHandler = require('./error'),
-    MessageHandler = require('./message');
+var Client = require('./client');
 
 
 function Server () {
     
+    // server settings
     this.settings = {
         
         hostname: 'ryan-server'
         
     };
     
+    // server collections
+    this.collections = {
+        
+        clients: [],
+        channels: []
+        
+    };
+    
     // init net.server instance
-    this.server = new net.Server;
-    
-    // set event handlers
-    this.server.on('connection', this.onConnection.bind(this));
-    
-    // init irc message handler
-    this.messageHandler = new MessageHandler(this);
-    this.errorHandler = new ErrorHandler(this);
-    
-    // collection of connected clients
-    this.clients = [];
-    
-};
-
-Server.prototype.listen = function (port) {
-    
-    this.server.listen(port);
+    this.server = new net.Server(this.onConnection.bind(this));
     
 };
 
 Server.prototype.onConnection = function (socket) {
     
-    // init client instance
-    var client = new Client(socket);
-    
-    // set event handlers
-    client.on('data', this.onClientData.bind(this));
-    client.on('close', this.onClientClose.bind(this));
-    
-    // add client to collection
-    this.clients.push(client);
+    // add new client to collection
+    this.collections.clients.push(new Client(socket, this));
     
 };
 
-Server.prototype.onClientData = function (client, data) {
+Server.prototype.listen = function (port) {
     
-    var parsedMessage = {
-        
-        client: client
-        
-    };
+    // begin accepting connections
+    this.server.listen(port);
     
-    // split on the obvious delimiter
-    var parts = data.trim().split(' ');
+};
+
+Server.prototype.getClient = function (nickname) {
     
-    // handle messages with and without prefix
-    if (parts[0][0] == ':') {
+    for (var x = 0; x < this.collections.clients.length; x++) {
         
-        parsedMessage.prefix = parts.shift();
-        parsedMessage.command = parts.shift().toUpperCase();
+        var client = this.collections.clients[x];
         
-    } else {
-        
-        parsedMessage.command = parts.shift().toUpperCase();
+        // return matched client based on nickname
+        if (client.attributes.nickname == nickname)
+            return client;
         
     }
-    
-    // tack on message params
-    parsedMessage.params = parts;
-    
-    // handle the received message
-    var error = this.messageHandler.handleMessage(parsedMessage),
-        handlerMethod = this.errorHandler[error];
-    
-    // handle any errors
-    if (error && handlerMethod)
-        handlerMethod(parsedMessage);
-    
-};
-
-Server.prototype.onClientClose = function(client) {
-    
-    
     
 };
 

@@ -1,67 +1,41 @@
 
-var util = require('util'),
-    events = require('events');
+// std libs
+var util = require('util');
+
+// lib libs
+var ErrorHandler = require('./error'),
+    MessageHandler = require('./message');
 
 
-function Client (socket) {
+function Client (socket, server) {
     
     this.socket = socket;
-    
-    // client settings
-    this.settings = {
-        
-        nickname: 'default',
-        hostname: socket.remoteAddress,
-        registered: false,
-        lastping: Date.now(),
-        channels: [],
-        modes: [],
-        
-    };
-    
-    this.randomnum = Math.floor(Math.random()*11);
-    
-    // incoming message buffer
-    this.buffer = '';
+    this.server = server;
     
     // set event handlers
     this.socket.on('data', this.onData.bind(this));
     
-    // set ping pong timer
-    this.pingpongTimer = setInterval(function () {
+    // pending data buffer
+    this.buffer = '';
+    
+    // client attributes
+    this.attributes = {
         
-        // kill the connection if its timed out
-        if ((Date.now() - this.settings.lastping) / 1000 > 60)
-            return this.socket.end();
+        modes: [],
+        lastping: Date.now(),
+        registered: false
         
-        // ask for a pong
-        return this.send('PING %s', this.settings.nickname);
-        
-    }.bind(this), 10000);
+    };
     
 };
 
-// client inherits from event emitter
-util.inherits(Client, events.EventEmitter);
-
-Client.prototype.send = function () {
+Client.prototype = {
     
-    // format the outbound message
-    var outboundMessage = util.format.apply(this, arguments) + '\r\n';
-    
-    // send it to the client
-    return this.socket.write(outboundMessage);
-    
-};
-
-Client.prototype.quit = function () {
-    
-    // notify others of the departure
-    this.settings.channels.forEach(function (channel) {
+    get mask() {
         
-        console.log(channel);
+        return this.attributes.nickname + '!' + this.attributes.username + '@' + this.attributes.hostname;
         
-    });
+    }
     
 };
 
@@ -75,32 +49,31 @@ Client.prototype.onData = function (buffer) {
     // emit each complete raw message
     lines.forEach(function (line) {
         
-        this.emit('data', this, line.trim());
+        // convert the raw data into a parsed message
+        var message = MessageHandler.parseMessage.call(this, line.trim());
+        
+        // handle the message
+        var error = MessageHandler.handleMessage(message);
+        
+        // handle an error
+        if (error)
+            ErrorHandler.handleError(error);
         
     }.bind(this));
     
     // update last ping pong time
-    this.settings.lastping = Date.now();
+    this.attributes.lastping = Date.now();
     
 };
 
-Client.prototype.onClose = function (had_error) {
+Client.prototype.send = function () {
     
-    // remove client socket event listeners
-    this.socket.removeAllListeners();
+    // format the outbound message
+    var outboundMessage = util.format.apply(this, arguments) + '\r\n';
     
-    // clear ping pong timer
-    clearInterval(this.pingpongTimer);
-    
-    // dispatch quit messages
-    this.quit();
-    
-    // todo: remove from channels
-    
-    // remove from user list
-    
+    // send it to the client
+    return this.socket.write(outboundMessage);
     
 };
 
-// export client class
 module.exports = Client;
