@@ -54,7 +54,8 @@ MessageHandler.prototype.handleMessage = function (message) {
 
 MessageHandler.prototype.onJOIN = function (message) {
     
-    var client = message.client;
+    var client = message.client,
+        server = client.server;
     
     if (message.params.length < 1)
         return ErrorHandler.createError('ERR_NEEDMOREPARAMS', message);
@@ -67,7 +68,15 @@ MessageHandler.prototype.onJOIN = function (message) {
     
     requestedChannels.forEach(function (requestedChannel, index) {
         
+        var channel = server.getChannel(requestedChannel);
         
+        if (channel) {
+            
+            
+            
+        }
+        
+        console.log(requestedChannel);
         
     });
     
@@ -98,7 +107,8 @@ MessageHandler.prototype.onNICK = function (message) {
     }
     
     // notify the user of the nickname change
-    client.send(':%s NICK :%s', client.mask, requestedNickname);
+    if (client.attributes.registered == true)
+        client.send(':%s NICK :%s', client.mask, requestedNickname);
     
     // set the client nickname
     client.attributes.nickname = requestedNickname;
@@ -123,9 +133,7 @@ MessageHandler.prototype.onUSER = function (message) {
     client.attributes.registered = true;
     
     // send welcoming messages
-    client.send('375 %s :- %s Message of the Day - ', client.attributes.nickname, client.server.settings.hostname);
-    client.send('372 %s :- No message set', client.attributes.nickname);
-    client.send('376 %s :End of /MOTD command', client.attributes.nickname);
+    client.send('422 %s :MOTD file is missing', client.attributes.nickname);
     
 };
 
@@ -153,7 +161,7 @@ MessageHandler.prototype.onMODE = function (message) {
         if (modes) {
             
             // modify user modes
-            client.send('MODE %s %s', client.attributes.nickname, modes);
+            client.send(':%s MODE %s %s', client.mask, client.attributes.nickname, modes);
             
         } else {
             
@@ -163,6 +171,16 @@ MessageHandler.prototype.onMODE = function (message) {
         }
         
     }
+    
+};
+
+MessageHandler.prototype.onQUIT = function (message) {
+    
+    var client = message.client,
+        server = client.server;
+    
+    // tell the server to quit this client
+    server.quitClient(client);
     
 };
 

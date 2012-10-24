@@ -54,6 +54,38 @@ Server.prototype.getClient = function (nickname) {
         
     }
     
+    return null;
+    
+};
+
+Server.prototype.getChannel = function (name) {
+    
+    for (var x = 0; x < this.collections.channels.length; x++) {
+        
+        var channel = this.collections.channels[x];
+        
+        // return matched channel based on name
+        if (channel.attributes.name == name)
+            return channel;
+        
+    }
+    
+    return null;
+    
+};
+
+Server.prototype.quitClient = function (client) {
+    
+    // close the client's socket
+    client.socket.end();
+    
+    // remove the client from the collection
+    if (this.collections.clients.indexOf(client) != -1)
+        this.collections.clients.splice(this.collections.clients.indexOf(client), 1);
+    
+    // for all users in channels that this client was in, send
+    // :warz_!warz@netadmin.betawarz.com QUIT :Quit: what what
+    
 };
 
 // export server object
